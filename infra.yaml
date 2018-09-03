@@ -1,0 +1,17 @@
+Resources:
+  WebServer:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref ImageId #ami-0912f71e06545ad88
+      InstanceType: t2.micro
+      KeyName: !Ref KeyName
+      SecurityGroups: 
+      - SG-testing
+Parameters:
+  KeyName:
+    Description: The EC2 Key Pair to allow SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  ImageId:
+    Description: AMI for the instance to be launched
+    Type: 'String'
+      
