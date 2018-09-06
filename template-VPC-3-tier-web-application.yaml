@@ -22,7 +22,7 @@ Resources:
     Type: AWS::EC2::VPCGatewayAttachment
     Properties: 
       VpcId: !Ref VirtualPrivateCloud
-      InternetGatewayId: ! Ref InternetGateway
+      InternetGatewayId: !Ref InternetGateway
 
   PublicSubnet1:
     Description: Public Subnet in Availability Zone 1.
