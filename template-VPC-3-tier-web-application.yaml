@@ -135,7 +135,7 @@ Resources:
         - Key: Name
           Value: Private-Subnet1
 
-  WebServer:
+  ApplicationServer:
     Description: Web-server tier EC2 Instance
     Type: 'AWS::EC2::Instance'
     Properties:
@@ -144,13 +144,13 @@ Resources:
       KeyName: !Ref KeyName
       SubnetId: !Ref PrivateSubnet1
       SecurityGroupIds:
-      - !Ref WebServerSecurityGroup
+      - !Ref ApplicationServerSecurityGroup
       - !Ref InternalSSHOnlySecurityGroup
       Tags:
         - Key: Name
-          Value: WebServer-Instance
+          Value: ApplicationServer-Instance
 
-  WebServerSecurityGroup:
+  ApplicationServerSecurityGroup:
     Description: security group allowing the web traffic from across the globe.
     Type: AWS::EC2::SecurityGroup
     Properties: 
@@ -167,7 +167,7 @@ Resources:
           ToPort: '443'
       Tags:
         - Key: Name
-          Value: SG-WebServer
+          Value: SG-ApplicationServer
 
   InternalSSHOnlySecurityGroup:
     Description: Security Group allowing users to securely access the instance.
