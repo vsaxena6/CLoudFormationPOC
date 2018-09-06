@@ -62,9 +62,9 @@ Resources:
     Description: Associate InternetRouteTable to PublicSubnet1, so that it becomes a public subnet.
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
-      RouteTableId: ! Ref InternetRouteTable
+      RouteTableId: !Ref InternetRouteTable
       SubnetId: !Ref PublicSubnet1
-              
+
 
   PrivateSubnet1:
     Description: Private Subnet in Availability Zone 1.
