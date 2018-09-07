@@ -228,6 +228,26 @@ Resources:
         - Key: Name
           Value: ApplicationServer-Instance2
 
+  RDSInstance:
+    Description: RDS Instance.
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref DBStorageSize
+      StorageType: !Ref DBStorageType
+      DBInstanceClass: !Ref DBInstanceClass
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      DBName: !Ref DatabaseName
+      Engine: !Ref DatabaseEngine
+      MasterUsername: !Ref MasterUserName
+      MasterUserPassword: !Ref MasterUserPassword
+      MultiAZ: false
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      Tags:
+        - Key: Name
+          Value: RDS-Instance          
+
   PrivateSubnet1:
     Description: Private Subnet in Availability Zone 1.
     Type: AWS::EC2::Subnet
