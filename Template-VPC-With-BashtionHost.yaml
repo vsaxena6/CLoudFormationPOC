@@ -1,0 +1,555 @@
+################################################################################
+# Define the AWS Resources.
+################################################################################
+Resources:
+
+  VirtualPrivateCloud:
+    Description: The VPC inside which all resources would be created.
+    Type: 'AWS::EC2::VPC'
+    Properties:
+      CidrBlock: !Ref VPCCidrBlock
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
+      InstanceTenancy: default
+      Tags:
+        - Key: Name
+          Value: Application-VPC
+
+  PublicSubnet1:
+    Description: Public Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      CidrBlock: 
+        Fn::Select:
+          - 0
+          - Fn::Cidr:
+            - !Ref VPCCidrBlock
+            - 6
+            - 8 
+      MapPublicIpOnLaunch: 'true'
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: Public-Subnet1          
+
+  PublicSubnet2:
+    Description: Public Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      CidrBlock: 
+        Fn::Select:
+          - 1
+          - Fn::Cidr:
+            - !Ref VPCCidrBlock
+            - 6
+            - 8 
+      MapPublicIpOnLaunch: 'true'
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""
+      Tags:
+        - Key: Name
+          Value: Public-Subnet2          
+
+  PrivateSubnet1:
+    Description: Private Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      CidrBlock: 
+        Fn::Select:
+          - 2
+          - Fn::Cidr:
+            - !Ref VPCCidrBlock
+            - 6
+            - 8 
+      MapPublicIpOnLaunch: 'false'
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""          
+      Tags:
+        - Key: Name
+          Value: Private-Subnet1
+
+  PrivateSubnet2:
+    Description: Private Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      CidrBlock: 
+        Fn::Select:
+          - 3
+          - Fn::Cidr:
+            - !Ref VPCCidrBlock
+            - 6
+            - 8 
+      MapPublicIpOnLaunch: 'false'
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""          
+      Tags:
+        - Key: Name
+          Value: Private-Subnet2
+
+  RDSSubnet1:
+    Description: Private Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      CidrBlock: 
+        Fn::Select:
+          - 4
+          - Fn::Cidr:
+            - !Ref VPCCidrBlock
+            - 6
+            - 8 
+      MapPublicIpOnLaunch: 'false'
+      AvailabilityZone:
+        Fn::Select:
+          - 0
+          - Fn::GetAZs: ""          
+      Tags:
+        - Key: Name
+          Value: RDS-Private-Subnet1
+
+  RDSSubnet2:
+    Description: Private Subnet in Availability Zone 1
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      CidrBlock: 
+        Fn::Select:
+          - 5
+          - Fn::Cidr:
+            - !Ref VPCCidrBlock
+            - 6
+            - 8 
+      MapPublicIpOnLaunch: 'false'
+      AvailabilityZone:
+        Fn::Select:
+          - 1
+          - Fn::GetAZs: ""          
+      Tags:
+        - Key: Name
+          Value: RDS-Private-Subnet2
+
+  RDSSubnetGroup:
+    Description: DB Subnet group for RDS instances.
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS instances
+      DBSubnetGroupName: application-db-subnet-group
+      SubnetIds:
+        - !Ref RDSSubnet1
+        - !Ref RDSSubnet2
+      Tags:
+        - Key: Name
+          Value: App-DB-Subnet-Group
+
+  InternetGateway:
+    Description: Internet Gateway for the VPC
+    Type: AWS::EC2::InternetGateway
+
+  AttachGateway:
+    Description: Attach Internet Gateway with the VPC.
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      InternetGatewayId: !Ref InternetGateway 
+
+  InternetRouteTable:
+    Description: A route table with a route to the Internet.
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VirtualPrivateCloud
+      Tags:
+      - Key: Name
+        Value: Public-Route-Table
+
+  RouteToIGW:
+    Description: Defines a route to the internet in InternetRouteTable.
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref InternetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  AssociatePublicRouteTableWithPublicSubnet1:
+    Description: Associate InternetRouteTable to PublicSubnet1, so that it becomes a public subnet.
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref InternetRouteTable
+      SubnetId: !Ref PublicSubnet1
+      
+  AssociatePublicRouteTableWithPublicSubnet2:
+    Description: Associate InternetRouteTable to PublicSubnet2, so that it becomes a public subnet.
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref InternetRouteTable
+      SubnetId: !Ref PublicSubnet2
+      
+  ApplicationServer1:
+    Description: Web-server tier EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref ApplicationImageId
+      InstanceType: !Ref ApplicationInstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref InternalSSHOnlySecurityGroup
+        - !Ref ApplicationSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Application-Instance-1
+
+  ApplicationServer2:
+    Description: Web-server tier EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref ApplicationImageId
+      InstanceType: !Ref ApplicationInstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PrivateSubnet2
+      SecurityGroupIds:
+        - !Ref InternalSSHOnlySecurityGroup
+        - !Ref ApplicationSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Application-Instance-2
+
+  BastionHost1:
+    Description: Bastion Host 1
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref BastionHostImageId
+      InstanceType: !Ref BastionHostInstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroupIds:
+        - !Ref ExternalSSHOnlySecurityGroup
+      Tags:
+        - Key: Name
+          Value: Bastion-Host-1
+
+  BastionHost2:
+    Description: Bastion Host 2
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref BastionHostImageId
+      InstanceType: !Ref BastionHostInstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PublicSubnet2
+      SecurityGroupIds:
+        - !Ref ExternalSSHOnlySecurityGroup
+      Tags:
+        - Key: Name
+          Value: Bastion-Host-2
+
+  RDSInstance:
+    Description: RDS Instance.
+    Type: AWS::RDS::DBInstance
+    Properties:
+      AllocatedStorage: !Ref DBStorageSize
+      StorageType: !Ref DBStorageType
+      DBInstanceClass: !Ref DBInstanceClass
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      DBName: !Ref DatabaseName
+      Engine: !Ref DatabaseEngine
+      MasterUsername: !Ref MasterUserName
+      MasterUserPassword: !Ref MasterUserPassword
+      MultiAZ: false
+      PubliclyAccessible: false
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      Tags:
+        - Key: Name
+          Value: RDS-Instance
+
+  WebSecurityGroup:
+    Description: Security Group allowing web traffic from across the globe.
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow HTTP and HTTPS traffic from the open internet"
+      VpcId: !Ref VirtualPrivateCloud
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: '80'
+          IpProtocol: tcp
+          ToPort: '80'
+        - CidrIp: 0.0.0.0/0
+          FromPort: '443'
+          IpProtocol: tcp
+          ToPort: '443'
+      Tags:
+        - Key: Name
+          Value: SG-WebServer
+
+  ApplicationSecurityGroup:
+    Description: This security group would allow ingress from the Web Security Group.
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow traffic from the Load Balancer security group"
+      VpcId: !Ref VirtualPrivateCloud
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref WebSecurityGroup
+          IpProtocol: tcp
+          FromPort: 1
+          ToPort: 65000
+
+  RDSSecurityGroup:
+    Description: This security group would allow ingress from the Application Security Group only.
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow traffic from the Application security group"
+      VpcId: !Ref VirtualPrivateCloud
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref ApplicationSecurityGroup
+          IpProtocol: tcp
+          FromPort: 1
+          ToPort: 65000          
+          
+  InternalSSHOnlySecurityGroup:
+    Description: Security Group allowing users to securely access the instance.
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow SSH traffic"
+      VpcId: !Ref VirtualPrivateCloud
+      SecurityGroupIngress:
+        - SourceSecurityGroupId: !Ref ExternalSSHOnlySecurityGroup
+          FromPort: '22'
+          IpProtocol: tcp
+          ToPort: '22'
+      Tags:
+        - Key: Name
+          Value: SG-Internal-SSH-Only
+
+  ExternalSSHOnlySecurityGroup:
+    Description: Security Group allowing users to securely access the instance.
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Allow SSH traffic"
+      VpcId: !Ref VirtualPrivateCloud
+      SecurityGroupIngress:
+        - CidrIp: !Ref IPRangeAllowedToConnectToBastionHost
+          FromPort: '22'
+          IpProtocol: tcp
+          ToPort: '22'
+      Tags:
+        - Key: Name
+          Value: SG-SSH-Only          
+
+  ApplicationLoadBalancer:
+    Description: Load Balancer for the application.
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: AttachGateway
+    Properties:
+      Type: application
+      IpAddressType: ipv4
+      Name: !Ref ApplicationName
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref WebSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: Application-Load-Balancer
+
+  TargetGroupForApplicationLoadBalancer:
+    Description: Define the Target Group for Application Load Balancer.
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VirtualPrivateCloud
+      TargetType: instance
+      Targets:
+        - Id: !Ref ApplicationServer1
+        - Id: !Ref ApplicationServer2
+
+  ListenerForApplicationLoadBalancer:
+    Description: Create a listener for the Application Load Balancer.
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions: 
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroupForApplicationLoadBalancer
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+################################################################################
+# Define the Input Parameters
+################################################################################
+Parameters:
+
+  ApplicationName:
+    Description: A name for your web application. Should be between 1 - 16 characters.
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    Default: awesomeapp
+
+  VPCCidrBlock:
+    Description: CIDR Block for the VPC.
+    Type: String
+    Default: "172.1.0.0/16"
+
+  KeyName:
+    Description: A Key Pair that could be used to access the EC2 instance.
+    Type: AWS::EC2::KeyPair::KeyName
+
+  ApplicationImageId:
+    Description: AMI id to be used for launching the instance.
+    Type: String
+
+  ApplicationInstanceType:
+    Description: Instance Type to be launched. Use t2.micro for free-tier.
+    Type: String
+    AllowedValues:
+    - t2.nano
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - t2.large
+    - t2.xlarge
+    - t2.2xlarge
+    Default: t2.micro
+    ConstraintDescription: Must be a valid T2 type instance.
+
+  BastionHostImageId:
+    Description: AMI id to be used for the Bastion Host instance.
+    Type: String
+
+  BastionHostInstanceType:
+    Description: Bastion Host Instance Type. Use t2.micro for free-tier.
+    Type: String
+    AllowedValues:
+    - t2.nano
+    - t2.micro
+    - t2.small
+    - t2.medium
+    - t2.large
+    - t2.xlarge
+    - t2.2xlarge
+    Default: t2.micro
+    ConstraintDescription: Must be a valid T2 type instance.
+
+  IPRangeAllowedToConnectToBastionHost:
+    Description: IP CIDR block range that can SSH into the Bastion Host. Any other IP would not be allowed to SSH.
+    Type: String
+    Default: 0.0.0.0/0
+    ConstraintDescription: Must be a valid ip range.
+    
+  DBInstanceClass:
+    Description: Instance Type to be launched. Use db.t2.micro for free-tier.
+    Type: String
+    AllowedValues:
+    - db.t2.micro
+    - db.t2.small
+    - db.t2.medium
+    - db.t2.large
+    - db.t2.xlarge
+    - db.t2.2xlarge
+    Default: db.t2.micro
+    ConstraintDescription: Must be a valid db.t2 type instance.
+
+  DBStorageSize:
+    Description: Storage Size of the RDS instance.
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 16384
+    ConstraintDescription: Minimum size is 20 GB
+
+  DBStorageType:
+    Description: Storage Type for the RDS Instance.
+    Type: String
+    AllowedValues:
+    - standard
+    - gp2
+    - io1
+    Default: standard
+    ConstraintDescription: Standard, general purpose or IO type storage.
+
+  DatabaseName:
+    Description: The name of the database to be created on the RDS Instance.
+    Type: String
+    Default: testDB
+
+  DatabaseEngine:
+    Description: Database Engine.
+    Type: String
+    AllowedValues:
+    - aurora (for MySQL 5.6-compatible Aurora)
+    - aurora-mysql (for MySQL 5.7-compatible Aurora)
+    - aurora-postgresql
+    - mariadb
+    - mysql
+    - oracle-ee
+    - oracle-se2
+    - oracle-se1
+    - oracle-se
+    - postgres
+    - sqlserver-ee
+    - sqlserver-se
+    - sqlserver-ex
+    - sqlserver-web
+    Default: mysql
+    ConstraintDescription: Must be a valid DB engine supported by AWS.
+  
+  MasterUserName:
+    Description: Master Username. Must be between 1 - 16 characters.
+    Type: String
+    MinLength: 1
+    MaxLength: 16
+    Default: dbadmin
+  
+  MasterUserPassword:
+    Description: Specify a password. Must be between 1 - 30 chars.
+    Type: String
+    NoEcho: 'true'
+    MinLength: 1
+    MaxLength: 30
+    AllowedPattern: ^[a-zA-Z0-9]*$
+    Default: Man1nTheM1dd1e
+
+################################################################################
+# Define the Outputs
+################################################################################
+Outputs:
+
+  RDSEndpoint:
+    Description: Endpoint for the RDS instance
+    Value: 
+      !Join [ ":", [ !GetAtt RDSInstance.Endpoint.Address, !GetAtt RDSInstance.Endpoint.Port ] ]
+
+  PublicIpForBastionHost1:
+    Description: Public IP Address of the Bastion Host 1
+    Value: !GetAtt BastionHost1.PublicIp
+
+  PublicIpForBastionHost2:
+    Description: Public IP Address of the Bastion Host 2
+    Value: !GetAtt BastionHost2.PublicIp
+
+  ApplicationURL:
+    Description: URL to access the application.
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+
+  PrivateIpForApplicationServer1:
+    Description: Private IP Address of the Application Server 1
+    Value: !GetAtt ApplicationServer1.PrivateIp
+
+  PrivateIpForApplicationServer2:
+    Description: Private IP Address of the Application Server 2
+    Value: !GetAtt ApplicationServer2.PrivateIp
