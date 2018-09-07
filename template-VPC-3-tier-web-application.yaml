@@ -117,8 +117,37 @@ Resources:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref InternetRouteTable
-      SubnetId: !Ref PublicSubnet2    
+      SubnetId: !Ref PublicSubnet2
 
+  ApplicationServer1:
+    Description: Web-server tier EC2 instance.
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref ApplicationImageId
+      InstanceType: !Ref ApplicationInstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PrivateSubnet1
+      SecurityGroupIds:
+      - !Ref ApplicationServerSecurityGroup
+
+      Tags:
+        - Key: Name
+          Value: ApplicationServer-Instance1      
+
+  ApplicationServer2:
+    Description: Web-server tier EC2 Instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref ApplicationImageId
+      InstanceType: !Ref ApplicationInstanceType
+      KeyName: !Ref KeyName
+      SubnetId: !Ref PrivateSubnet2
+      SecurityGroupIds:
+      - !Ref ApplicationServerSecurityGroup
+      
+      Tags:
+        - Key: Name
+          Value: ApplicationServer-Instance2
 
   PrivateSubnet1:
     Description: Private Subnet in Availability Zone 1.
@@ -134,21 +163,6 @@ Resources:
       Tags:
         - Key: Name
           Value: Private-Subnet1
-
-  ApplicationServer:
-    Description: Web-server tier EC2 Instance
-    Type: 'AWS::EC2::Instance'
-    Properties:
-      ImageId: !Ref ApplicationImageId
-      InstanceType: !Ref ApplicationInstanceType
-      KeyName: !Ref KeyName
-      SubnetId: !Ref PrivateSubnet1
-      SecurityGroupIds:
-      - !Ref ApplicationServerSecurityGroup
-      - !Ref InternalSSHOnlySecurityGroup
-      Tags:
-        - Key: Name
-          Value: ApplicationServer-Instance
 
   ApplicationServerSecurityGroup:
     Description: security group allowing the web traffic from across the globe.
@@ -184,6 +198,26 @@ Resources:
       Tags:
         - Key: Name  
           Value: SG-SSH-Only
+
+  ApplicationLoadBalancer:
+    Description: Load Balancer for the application.
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: AttachGateway
+    Properties: 
+      Type: application
+      IpAddressType: ipv4
+      Name: awesomeapp
+      Scheme: internet-facing
+      SecurityGroups: 
+        - !Ref ApplicationServerSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: Application-Load-Balancer
+    
+
 
 ##############################################################################################################
 
